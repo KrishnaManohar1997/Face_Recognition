@@ -1,5 +1,4 @@
 django == 1.9
 numpy
-sqlite3
 dlib
 face_recognition
