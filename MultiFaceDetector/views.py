@@ -84,6 +84,6 @@ def processImage(request):
         image_result = open(dir, 'wb')
         image_result.write(imageData)
         name = MatchFaceData()
-        return HttpResponse(f'{name}')
+        return HttpResponse(name)
     else:
         return HttpResponse("<b>A GET Request will not be processed</b>")
