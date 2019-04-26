@@ -9,7 +9,6 @@ import sqlite3
 import face_recognition
 import numpy as np
 import io
-import cv2
 from urllib.request import urlopen
 import os
 dirname = os.path.dirname(__file__)
@@ -61,14 +60,6 @@ def MatchFaceData():
             name = Saved_Names[first_match_index]     
         face_names.append(name)
     return face_names
-
-### This method is not used, because we are not retreiving image from online
-#from urllib.request import urlretrieve
-#def saveImage(url):
-#    print("Image Method Called")
-#    urlretrieve(url, "C:\\Users\\manohar.k\\source\\repos\\KekaHr\\KekaHr\\MultiFaceDetector\\data\\img.jpg")
-#    print("Image Stored successfully")
-
 import urllib.parse
 import json
 import base64
@@ -77,9 +68,6 @@ def processImage(request):
     if(request.method == 'POST'):
         data = str(request.body,'utf-8')
         data = json.loads(data)
-        #data = dict(urllib.parse.parse_qsl(data))
-        #url = data[b'url'].decode('UTF-8')
-        #saveImage(url)
         imageData = base64.b64decode(data['imgData'])
         image_result = open(dir, 'wb')
         image_result.write(imageData)
