@@ -1,4 +1,6 @@
 django == 1.9
+cmake
+requests
 numpy
 dlib
 face_recognition
