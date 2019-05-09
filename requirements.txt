@@ -4,3 +4,4 @@ requests
 numpy
 dlib
 face_recognition
+mysql-connector
