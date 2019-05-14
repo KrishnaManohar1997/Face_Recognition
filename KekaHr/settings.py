@@ -93,12 +93,21 @@ WSGI_APPLICATION = 'KekaHr.wsgi.application'
 
 DATABASES = {
     'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': os.path.join(BASE_DIR, 'db.sqlite'),
-    }
+        'ENGINE': 'sql_server.pyodbc',
+        'NAME': 'employeefacesdata',
+        'USER': 'krishnamanohar',
+        'PASSWORD': '8333038187mM*',
+        'HOST': 'kekafaces.database.windows.net',
+        'PORT': '1433',
+        'OPTIONS': {
+            'driver': 'ODBC Driver 13 for SQL Server',
+            'MARS_Connection': 'True',
+        },
+    },
 }
 
-
+# set this to False if you want to turn off pyodbc's connection pooling
+DATABASE_CONNECTION_POOLING = False
 # Password validation
 # https://docs.djangoproject.com/en/1.9/ref/settings/#auth-password-validators
 

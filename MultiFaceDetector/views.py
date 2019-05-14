@@ -4,31 +4,20 @@ from django.http import HttpRequest
 from django.views.decorators.csrf import csrf_exempt
 from PIL import Image
 from io import BytesIO
-import face_recognition
-import numpy as np
 import io
 from urllib.request import urlopen
-import mysql.connector as mysql
-from mysql.connector import Error
 import os
 import urllib.parse
 import json
 import base64
-dirname = os.path.dirname(__file__)
-image_directory = os.path.join(dirname, 'data\\img.jpg')
+import face_recognition
+import numpy as np
+from django.db import connection
+
 def MatchFaceData(imageData):
     Saved_Encodings = []
     Saved_Names = []
-    DB_NAME = "9JRQMmVx9k"
-    SqlDB = mysql.connect(
-        host = "remotemysql.com",
-        port = "3306",
-        user = "9JRQMmVx9k",
-        password = "RWiVc5LET0",
-        database = DB_NAME,
-        use_pure = True
-        )
-    cursor = SqlDB.cursor()
+    cursor = connection.cursor()
     cursor.execute("SELECT FaceEncoding,EmployeeName from EmployeeFaceEncodings")
     for row in cursor.fetchall():
         Saved_Encodings.append(np.frombuffer(row[0],dtype = "float64"))
