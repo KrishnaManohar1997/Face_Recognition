@@ -3,13 +3,14 @@ Definition of urls for KekaHr.
 """
 
 from django.conf.urls import include, url
+from django.urls import path
 # Uncomment the next two lines to enable the admin:
 from django.contrib import admin
 admin.autodiscover()
 
 urlpatterns = [
     url(r'^admin/',admin.site.urls),
-    url(r'^FaceRecognition/',include('MultiFaceDetector.urls')),
+    url(r'^(?i)FaceRecognition/',include('MultiFaceDetector.urls')),
     # Examples:
     # url(r'^$', KekaHr.views.home, name='home'),
     # url(r'^KekaHr/', include('KekaHr.KekaHr.urls')),
