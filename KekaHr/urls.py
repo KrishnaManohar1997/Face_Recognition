@@ -10,7 +10,7 @@ admin.autodiscover()
 
 urlpatterns = [
     url(r'^admin/',admin.site.urls),
-    url(r'^(?i)FaceRecognition/',include('MultiFaceDetector.urls')),
+    url(r'^(?i)kekaface/',include('MultiFaceDetector.urls')),
     # Examples:
     # url(r'^$', KekaHr.views.home, name='home'),
     # url(r'^KekaHr/', include('KekaHr.KekaHr.urls')),
