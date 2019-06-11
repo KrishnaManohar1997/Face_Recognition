@@ -14,7 +14,7 @@ import face_recognition
 import numpy as np
 # from django.db import connection
 import time
-import pyodbc
+# import pyodbc
 from MultiFaceDetector.FaceEncodingToBlob import adapt_array,convert_array
 import sqlite3
 def initializeCursor():
@@ -33,7 +33,7 @@ def initializeCursor():
                     ,EmployeeName TEXT NOT NULL
                     ,isFaceRegistered INTEGER)
                     ''')
-    return cursor,con
+    return (cursor,con)
 
 def verifyUser(original_image):
     face_encodings = []
@@ -51,7 +51,7 @@ def verifyUser(original_image):
     # face_encodings = face_recognition.face_encodings(faceDataArray)[0]
         try:
             # cursor = connection.cursor()
-            cursor = initializeCursor()
+            cursor,conn = initializeCursor()
             cursor.execute("SELECT FaceEncoding,EmployeeName,EmployeeId from EmployeeFaceEncodings WHERE isFaceRegistered = 1")
             print(type(face_encodings))
             for row in cursor.fetchall():
@@ -112,12 +112,15 @@ def registration(request):
         # employeeId = data['eid']
         data = str(request.body,'utf-8')
         data = json.loads(data)
-        imageData = base64.b64decode(data['imgData'])
+        imgData = data['imgData']
+        imageData = base64.b64decode(imgData)
         employeeId = data['eid']
+        employeeName = data['empName']
         original_image = Image.open(io.BytesIO(imageData))
         faceDataArray = np.array(original_image)
         # imgNo = data['imgId']
         userData = verifyUser(faceDataArray)
+        registrationStatus = ''
         if(isinstance(userData,int)):
             if(userData == 0):
                 return HttpResponse("No face in given picture")
@@ -126,27 +129,33 @@ def registration(request):
             elif(userData == 1):
                 return HttpResponse("An Error occured while Connecting to Server")
             elif(userData == -1):
-                registrationStatus = registerUser(faceDataArray,employeeId)
+                registrationStatus = registerUser(imgData,faceDataArray,employeeId,employeeName)
+            return HttpResponse(registrationStatus)
         elif(isinstance(userData,tuple)):
             return HttpResponse('User Already Registered'+str(userData[0])+','+str(userData[1]))
     else:
         return HttpResponse(f"<h1>GET request is not accepted for API call</h1>")
 
-def registerUser(imgData,employeeId):
-    encodingToStore = generateFaceEncoding(imgData,num_jit=10)
+def registerUser(original_image,imgData,employeeId,employeeName):
+    encodingToStore = generateFaceEncoding(imgData,num_jit = 5)
     if(isinstance(encodingToStore,int) and (encodingToStore == 0 or encodingToStore ==2)):
         return encodingToStore
     elif(isinstance(encodingToStore,np.ndarray)):
-        # cursor = connection.cursor()
         cursor,conn = initializeCursor()
-        cursor.execute("INSERT INTO EmployeeFaceEncodings(FaceEncoding,EmployeeName,EmployeeId,isFaceRegistered) VALUES(?,?,?,1)",())
-        return True
-    # elif(isinstance(encodingToStore,int) and encodingToStore == 2):
-    #     """
-    #     If more than 1 face is detected, the response will be 2 indicating
-    #     more than 1 face in the screen
-    #     """
-    #     return 2    
+        # cursor.execute("INSERT INTO EmployeeFaceEncodings(FaceEncoding,isFaceRegistered,EmployeeImage,EmployeeId) VALUES(?,?,?,?)",(encodingToStore,1,original_image,employeeId))
+        try:
+            cursor.execute('UPDATE EmployeeFaceEncodings SET FaceEncoding=?,isFaceRegistered=1,EmployeeImage=? WHERE EmployeeId=?',(encodingToStore,original_image,employeeId))
+            conn.commit()
+            return True
+        except Exception as e:
+            print(e)
+            return False
+# elif(isinstance(encodingToStore,int) and encodingToStore == 2):
+#     """
+#     If more than 1 face is detected, the response will be 2 indicating
+#     more than 1 face in the screen
+#     """
+#     return 2    
     return False
 
 def generateFaceEncoding(original_image,num_jit = 1):
@@ -176,10 +185,11 @@ def employeeInfo(isRegistered):
     userData = []
     try:
         cursor = initializeCursor()[0]
-        for user in cursor.execute("SELECT EmployeeFaceEncodings.EmployeeId,EmployeeFaceEncodings.EmployeeName FROM EmployeeFaceEncodings WHERE EmployeeFaceEncodings.isFaceRegistered ="+str(isRegistered)).fetchall():
+        for user in cursor.execute("SELECT EmployeeFaceEncodings.EmployeeId,EmployeeFaceEncodings.EmployeeName,EmployeeFaceEncodings.EmployeeImage FROM EmployeeFaceEncodings WHERE EmployeeFaceEncodings.isFaceRegistered ="+str(isRegistered)).fetchall():
             employeeData = {}
             employeeData['id'] = user[0]
             employeeData['name'] = user[1].title()
+            employeeData['image'] = user[2]
             userData.append(employeeData)
         return HttpResponse(userData)
     except Exception as e:
