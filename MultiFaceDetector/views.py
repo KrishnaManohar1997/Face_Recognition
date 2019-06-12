@@ -1,12 +1,12 @@
 from django.shortcuts import render
 from django.http import HttpResponse
 from django.http import HttpRequest
+from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 from PIL import Image
 from io import BytesIO
 import io
 from urllib.request import urlopen
-import os
 import urllib.parse
 import json
 import base64
@@ -28,7 +28,7 @@ def initializeCursor():
     sqlite3.register_converter("array", convert_array)
     cursor.execute('''
                     CREATE TABLE IF NOT EXISTS 
-                    EmployeeFaceEncodings ( EmployeeId INTEGER PRIMARY KEY AUTOINCREMENT
+                    EmployeeFaceEncodings (EmployeeId INTEGER PRIMARY KEY AUTOINCREMENT
                     ,FaceEncoding array
                     ,EmployeeName TEXT NOT NULL
                     ,isFaceRegistered INTEGER)
@@ -53,7 +53,6 @@ def verifyUser(original_image):
             # cursor = connection.cursor()
             cursor,conn = initializeCursor()
             cursor.execute("SELECT FaceEncoding,EmployeeName,EmployeeId from EmployeeFaceEncodings WHERE isFaceRegistered = 1")
-            print(type(face_encodings))
             for row in cursor.fetchall():
                 existingEncoding = np.frombuffer(row[0],dtype = "float64")
                 # matches = face_recognition.compare_faces(Saved_Encodings, face_encoding,tolerance = 0.48)
@@ -65,7 +64,6 @@ def verifyUser(original_image):
                 if True in matches:
                     EmployeeName = row[1]
                     EmployeeId = row[2]
-                    print(row[1],row[2])
                     return (EmployeeName,EmployeeId)
                     # Saved_Names.append(row[1])
             return -1
@@ -81,25 +79,30 @@ def verifyUser(original_image):
 @csrf_exempt
 def verification(request):
     if(request.method == 'POST'):
-        data = str(request.body,'utf-8')
-        data = json.loads(data)
-        imageData = base64.b64decode(data['imgData'])
-        original_image = Image.open(io.BytesIO(imageData))
+        # data = str(request.body,'utf-8')
+        # data = json.loads(data)
+        # imageData = base64.b64decode(data['image'])
+        # original_image = Image.open(io.BytesIO(imageData))
         # faceDataArray = np.array(imageData)
-        name = verifyUser(original_image)
-        if(isinstance(name,int)):
-            if(name == -1):
-                return HttpResponse("Cannot Recognize user. Are you Registerd? Else try taking picture covering your full face")    
-            elif(name == 0):
-                return HttpResponse("No face in given picture")
-            elif(name == 2):
-                return HttpResponse("More than 1 User Found in Picture")
-            elif(name == 3):
-                return HttpResponse("An Error occured while Connecting to Server")
-        elif(isinstance(name,tuple)):
-            return HttpResponse(str(name[0])+','+str(name[1]))
+        original_image = parseRequest(request.body,0)
+        if(original_image is not None):
+            name = verifyUser(original_image)
+            if(isinstance(name,int)):
+                return JsonResponse({'status':name,'message':'Error Occured'})
+                # if(name == -1):
+                #     return HttpResponse("Cannot Recognize user. Are you Registerd? Else try taking picture covering your full face")    
+                # elif(name == 0):
+                #     return HttpResponse("No face in given picture")
+                # elif(name == 2):
+                #     return HttpResponse("More than 1 User Found in Picture")
+                # elif(name == 3):
+                #     return HttpResponse("An Error occured while Connecting to Server")
+            elif(isinstance(name,tuple)):
+                return JsonResponse({'status':1,'name':name[0],'id':name[1]})
+        else:
+            return JsonResponse({'status':6,'message':'Error With Request Data and Header'})
     else:
-        return HttpResponse("<b>A GET Request will not be processed</b>")
+        return JsonResponse({'status':5,'message':'Get response is not accepted'})
 
 @csrf_exempt
 def registration(request):
@@ -110,41 +113,56 @@ def registration(request):
         # print(data)
         # imageData = data['imgData']
         # employeeId = data['eid']
-        data = str(request.body,'utf-8')
-        data = json.loads(data)
-        imgData = data['imgData']
-        imageData = base64.b64decode(imgData)
-        employeeId = data['eid']
-        employeeName = data['empName']
-        original_image = Image.open(io.BytesIO(imageData))
-        faceDataArray = np.array(original_image)
-        # imgNo = data['imgId']
-        userData = verifyUser(faceDataArray)
-        registrationStatus = ''
-        if(isinstance(userData,int)):
-            if(userData == 0):
-                return HttpResponse("No face in given picture")
-            elif(userData == 2):
-                return HttpResponse("More than 1 User Found in Picture")
-            elif(userData == 1):
-                return HttpResponse("An Error occured while Connecting to Server")
-            elif(userData == -1):
-                registrationStatus = registerUser(imgData,faceDataArray,employeeId,employeeName)
-            return HttpResponse(registrationStatus)
-        elif(isinstance(userData,tuple)):
-            return HttpResponse('User Already Registered'+str(userData[0])+','+str(userData[1]))
-    else:
-        return HttpResponse(f"<h1>GET request is not accepted for API call</h1>")
+        data = parseRequest(request.body,1)
+        if(data is not None):
+            employeeId,employeeName,base64ImageData,original_image = data
+            userData = verifyUser(original_image)
+            registrationStatus = ''
+            if(isinstance(userData,int)):
+                """
+                userData values can be
+                -1 User not registered, so registration will be done (Managed Internally)
+                0 No face found in the picture
+                1 Registration Sucessfull
+                2 More than 1 face found
+                3 Server Error
+                4 User already registered, data of the user(name and Id) will be sent
 
-def registerUser(original_image,imgData,employeeId,employeeName):
-    encodingToStore = generateFaceEncoding(imgData,num_jit = 5)
+                """
+                if(userData == -1):
+                    registrationStatus = registerUser(base64ImageData,original_image,employeeId,employeeName)
+                    if(registrationStatus is True):
+                        return JsonResponse({'status':1,'message':'User Registration is Successfull'})
+                    else:
+                        return JsonResponse({'status':5,'message':'Unsuccessfull while Registering'})
+                else:
+                    """
+                    returns 0,2,3 or 4
+                    """
+                    return JsonResponse({'status':userData})
+                # if(userData == 0):
+                #     return HttpResponse("No face in given picture")
+                # elif(userData == 2):
+                #     return HttpResponse("More than 1 User Found in Picture")
+                # elif(userData == 3):
+                #     return HttpResponse("An Error occured while Connecting to Server")
+            elif(isinstance(userData,tuple)):
+                return JsonResponse({'status':4,'name':userData[0],'id':userData[1]})
+                    # 'User Already Registered'+str(userData[0])+','+str(userData[1]))
+        else:
+            return JsonResponse({'status':6,'message':'Error With Request Data and Header'})
+    else:
+        return JsonResponse({'status':5,'message':'Get response is not accepted'})
+
+def registerUser(base64ImageData,original_image,employeeId,employeeName):
+    encodingToStore = generateFaceEncoding(original_image,num_jit = 5)
     if(isinstance(encodingToStore,int) and (encodingToStore == 0 or encodingToStore ==2)):
         return encodingToStore
     elif(isinstance(encodingToStore,np.ndarray)):
         cursor,conn = initializeCursor()
         # cursor.execute("INSERT INTO EmployeeFaceEncodings(FaceEncoding,isFaceRegistered,EmployeeImage,EmployeeId) VALUES(?,?,?,?)",(encodingToStore,1,original_image,employeeId))
         try:
-            cursor.execute('UPDATE EmployeeFaceEncodings SET FaceEncoding=?,isFaceRegistered=1,EmployeeImage=? WHERE EmployeeId=?',(encodingToStore,original_image,employeeId))
+            cursor.execute('UPDATE EmployeeFaceEncodings SET FaceEncoding=?,isFaceRegistered=1,EmployeeImage=? WHERE EmployeeId=?',(encodingToStore,base64ImageData,employeeId))
             conn.commit()
             return True
         except Exception as e:
@@ -187,15 +205,30 @@ def employeeInfo(isRegistered):
         cursor = initializeCursor()[0]
         for user in cursor.execute("SELECT EmployeeFaceEncodings.EmployeeId,EmployeeFaceEncodings.EmployeeName,EmployeeFaceEncodings.EmployeeImage FROM EmployeeFaceEncodings WHERE EmployeeFaceEncodings.isFaceRegistered ="+str(isRegistered)).fetchall():
             employeeData = {}
-            employeeData['id'] = user[0]
-            employeeData['name'] = user[1].title()
-            employeeData['image'] = user[2]
+            employeeData["id"] = user[0]
+            employeeData["name"] = user[1].title()
+            employeeData["image"] = user[2]
             userData.append(employeeData)
-        return HttpResponse(userData)
+        return JsonResponse(userData,safe=False)
     except Exception as e:
         print(e)
-    return HttpResponse("Server Failed to Respond")
+    return JsonResponse({'status':False})
 
+def parseRequest(requestBody,registration = 1):
+    try:
+        data = str(requestBody,'utf-8')
+        data = json.loads(data)
+        base64ImageData = data['image']
+        imageData = base64.b64decode(base64ImageData)
+        original_image = Image.open(io.BytesIO(imageData))
+        if(registration is 1):
+            employeeId = data['id']
+            employeeName = data['name']
+            return (employeeId,employeeName,base64ImageData,original_image)
+        elif registration is 0:
+            return original_image
+    except:
+        return None
 @csrf_exempt
 def FillDBWithUsers(request):
     cursor,conn = initializeCursor()
