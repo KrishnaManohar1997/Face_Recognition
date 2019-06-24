@@ -47,13 +47,13 @@ DEBUG = True
 
 INSTALLED_APPS = [
     # Add your apps here to enable them
-    'django.contrib.admin',
-    'django.contrib.auth',
-    'django.contrib.contenttypes',
-    'django.contrib.sessions',
-    'django.contrib.messages',
-    'django.contrib.staticfiles',
-    'MultiFaceDetector',
+    # 'django.contrib.admin',
+    # 'django.contrib.auth',
+    # 'django.contrib.contenttypes',
+    # 'django.contrib.sessions',
+    # 'django.contrib.messages',
+    # 'django.contrib.staticfiles',
+    'MultiFaceDetector.apps.MultiFaceDetectorConfig',
 ]
 
 MIDDLEWARE_CLASSES = [

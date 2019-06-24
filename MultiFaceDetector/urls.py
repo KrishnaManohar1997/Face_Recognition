@@ -6,6 +6,6 @@ urlpatterns = [
     url(r'^(?i)registration$',views.registration),
     url(r'^(?i)registeredEmployees$',views.showRegisteredUsers),
     url(r'^(?i)unregisteredEmployees$',views.showUnRegisteredUsers),
-    url(r'^(?i)init$',views.FillDBWithUsers),
+    # url(r'^(?i)init$',views.FillDBWithUsers),
     # path('register/<int:uid>/',registerUser),
     ]
